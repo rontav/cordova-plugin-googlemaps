@@ -96,7 +96,6 @@ var saltHash = Math.floor(Math.random() * Date.now());
         "}"
     ].join("");
     document.head.appendChild(navDecorBlocker);
-    window.runOnce = 0;
 
     function putHtmlElements() {
         var mapIDs = Object.keys(MAPS);
@@ -151,6 +150,7 @@ var saltHash = Math.floor(Math.random() * Date.now());
         elemId = null;
         children = null;
     }
+    window.putHtmlElements = putHtmlElements;
 
     // This is the special event that is fired by the google maps plugin
     // (Not generic plugin)

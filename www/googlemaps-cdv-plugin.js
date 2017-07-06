@@ -96,8 +96,14 @@ var saltHash = Math.floor(Math.random() * Date.now());
     "}"
   ].join("");
   document.head.appendChild(navDecorBlocker);
+  window.runOnce = 0;
 
   function putHtmlElements() {
+      console.log(MAPS);
+      window.runOnce++;
+      if(window.runOnce > 10){
+          return;
+      }
       var mapIDs = Object.keys(MAPS);
       if (isChecking) {
         return;

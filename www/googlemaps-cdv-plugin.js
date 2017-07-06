@@ -99,7 +99,6 @@ var saltHash = Math.floor(Math.random() * Date.now());
     window.runOnce = 0;
 
     function putHtmlElements() {
-        console.log(MAPS);
         var mapIDs = Object.keys(MAPS);
         if (mapIDs.length === 0) {
             cordova.exec(null, null, 'CordovaGoogleMaps', 'clearHtmlElements', []);

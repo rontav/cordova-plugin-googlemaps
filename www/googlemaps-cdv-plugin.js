@@ -152,6 +152,7 @@ var saltHash = Math.floor(Math.random() * Date.now());
     }
     window.putHtmlElements = putHtmlElements;
     window.resetTimer = resetTimer;
+    window.mapCommon = common;
 
     // This is the special event that is fired by the google maps plugin
     // (Not generic plugin)

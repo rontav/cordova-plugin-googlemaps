@@ -99,7 +99,38 @@ var saltHash = Math.floor(Math.random() * Date.now());
 
     function putHtmlElements() {
         var mapIDs = Object.keys(MAPS);
+        if (isChecking) {
+            return;
+        }
         if (mapIDs.length === 0) {
+            cordova.exec(null, null, 'CordovaGoogleMaps', 'clearHtmlElements', []);
+            return;
+        }
+        isChecking = true;
+
+        //-------------------------------------------
+        // If there is no visible map, stop checking
+        //-------------------------------------------
+        var visibleMapDivList, i, mapId, map;
+        if (window.document.querySelectorAll) {
+            // Android 4.4 and above
+            visibleMapList = mapIDs.filter(function (mapId) {
+                var map = MAPS[mapId];
+                return (map && map.getVisible() && map.getDiv() && common.shouldWatchByNative(map.getDiv()));
+            });
+        } else {
+            // for older versions than Android 4.4
+            visibleMapList = [];
+            for (i = 0; i < mapIDs.length; i++) {
+                mapId = mapIDs[i];
+                map = MAPS[mapId];
+                if (map && map.getVisible() && map.getDiv() && common.shouldWatchByNative(map.getDiv())) {
+                    visibleMapList.push(mapId);
+                }
+            }
+        }
+        if (visibleMapList.length === 0) {
+            isChecking = false;
             cordova.exec(null, null, 'CordovaGoogleMaps', 'clearHtmlElements', []);
             return;
         }
@@ -109,11 +140,22 @@ var saltHash = Math.floor(Math.random() * Date.now());
         //-------------------------------------------
         //baseRect = common.getDivRect(baseDom);
         var children = common.getAllChildren(document.body);
+        var bodyRect = common.getDivRect(document.body);
+
+        if (children.length === 0) {
+            children = null;
+            isChecking = false;
+            return;
+        }
 
         var domPositions = {};
         var size, elemId, child, parentNode;
+        var shouldUpdate = false;
 
         children.unshift(document.body);
+        if (children.length !== prevChildrenCnt) {
+            shouldUpdate = true;
+        }
         prevChildrenCnt = children.length;
         for (i = 0; i < children.length; i++) {
             child = children[i];
@@ -134,7 +176,92 @@ var saltHash = Math.floor(Math.random() * Date.now());
                 depth: depth,
                 zIndex: zIndex
             };
+            if (!shouldUpdate) {
+                if (elemId in prevDomPositions) {
+                    if (domPositions[elemId].size.left !== prevDomPositions[elemId].size.left ||
+                        domPositions[elemId].size.top !== prevDomPositions[elemId].size.top ||
+                        domPositions[elemId].size.width !== prevDomPositions[elemId].size.width ||
+                        domPositions[elemId].size.height !== prevDomPositions[elemId].size.height ||
+                        domPositions[elemId].depth !== prevDomPositions[elemId].depth) {
+                        shouldUpdate = true;
+                    }
+                } else {
+                    shouldUpdate = true;
+                }
+            }
         }
+        /*
+        for (i = 0; i < children.length; i++) {
+            child = children[i];
+            elemId = child.getAttribute("__pluginDomId");
+            if (!elemId) {
+                elemId = "pgm" + Math.floor(Math.random() * Date.now());
+                child.setAttribute("__pluginDomId", elemId);
+            }
+            domPositions[elemId] = common.getDomInfo(child);
+            if (!shouldUpdate) {
+                if (elemId in prevDomPositions) {
+                    if (domPositions[elemId].size.left !== prevDomPositions[elemId].size.left ||
+                        domPositions[elemId].size.top !== prevDomPositions[elemId].size.top ||
+                        domPositions[elemId].size.width !== prevDomPositions[elemId].size.width ||
+                        domPositions[elemId].size.height !== prevDomPositions[elemId].size.height) {
+                        shouldUpdate = true;
+                    }
+                } else {
+                    shouldUpdate = true;
+                }
+            }
+        }
+        */
+        if (!shouldUpdate && idlingCnt > -1) {
+            idlingCnt++;
+            if (idlingCnt === 2) {
+                mapIDs.forEach(function (mapId) {
+                    MAPS[mapId].refreshLayout();
+                });
+            }
+            // Stop timer when user does not touch the app and no changes are occurred during 1500ms.
+            // (50ms * 5times + 200ms * 5times).
+            // This save really the battery life significantly.
+            if (idlingCnt < 10) {
+                setTimeout(putHtmlElements, idlingCnt < 5 ? 50 : 200);
+            }
+            isChecking = false;
+            return;
+        }
+        idlingCnt = 0;
+        //console.log(domPositions);
+        //return;
+
+        // If the map div is not displayed (such as display='none'),
+        // ignore the map temporally.
+        mapIDs.forEach(function (mapId) {
+            var div = MAPS[mapId].getDiv();
+            if (div) {
+                var elemId = div.getAttribute("__pluginDomId");
+                if (elemId && !(elemId in domPositions)) {
+
+                    // Is the map div removed?
+                    if (window.document.querySelector) {
+                        var ele = document.querySelector("[__pluginDomId='" + elemId + "']");
+                        if (!ele) {
+                            // If no div element, remove the map.
+                            MAPS[mapId].remove();
+                        }
+                    }
+
+                    domPositions[elemId] = {
+                        size: {
+                            top: 10000,
+                            left: 0,
+                            width: 100,
+                            height: 100
+                        },
+                        depth: 0
+                    };
+                }
+            }
+        });
 
         cordova.exec(function () {
             prevDomPositions = domPositions;
@@ -143,7 +270,8 @@ var saltHash = Math.floor(Math.random() * Date.now());
                     MAPS[mapId].refreshLayout();
                 }
             });
-            // setTimeout(putHtmlElements, 25);
+            setTimeout(putHtmlElements, 25);
+            isChecking = false;
         }, null, 'CordovaGoogleMaps', 'putHtmlElements', [domPositions]);
         child = null;
         parentNode = null;

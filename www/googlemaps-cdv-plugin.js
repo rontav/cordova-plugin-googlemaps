@@ -109,21 +109,11 @@ var saltHash = Math.floor(Math.random() * Date.now());
         //-------------------------------------------
         //baseRect = common.getDivRect(baseDom);
         var children = common.getAllChildren(document.body);
-        var bodyRect = common.getDivRect(document.body);
-
-        if (children.length === 0) {
-            children = null;
-            return;
-        }
 
         var domPositions = {};
         var size, elemId, child, parentNode;
-        var shouldUpdate = false;
 
         children.unshift(document.body);
-        if (children.length !== prevChildrenCnt) {
-            shouldUpdate = true;
-        }
         prevChildrenCnt = children.length;
         for (i = 0; i < children.length; i++) {
             child = children[i];
@@ -144,19 +134,6 @@ var saltHash = Math.floor(Math.random() * Date.now());
                 depth: depth,
                 zIndex: zIndex
             };
-            if (!shouldUpdate) {
-                if (elemId in prevDomPositions) {
-                    if (domPositions[elemId].size.left !== prevDomPositions[elemId].size.left ||
-                        domPositions[elemId].size.top !== prevDomPositions[elemId].size.top ||
-                        domPositions[elemId].size.width !== prevDomPositions[elemId].size.width ||
-                        domPositions[elemId].size.height !== prevDomPositions[elemId].size.height ||
-                        domPositions[elemId].depth !== prevDomPositions[elemId].depth) {
-                        shouldUpdate = true;
-                    }
-                } else {
-                    shouldUpdate = true;
-                }
-            }
         }
 
         cordova.exec(function () {
